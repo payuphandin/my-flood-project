@@ -1,21 +1,49 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseAdmin, getSupabaseClient } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    const supabase = getSupabaseClient()
-    const { data, error } = await supabase
+    const supabase = getSupabaseAdmin()
+    const { data: reports, error: reportError } = await supabase
       .from('water_reports')
       .select('*')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(200)
 
-    if (error) throw error
+    if (reportError) throw reportError
+
+    const reportIds = (reports ?? []).map((report) => report.id)
+    let flags: Array<{ id: string; water_report_id: string; reason: string; created_at: string }> = []
+
+    if (reportIds.length > 0) {
+      const { data: flagData, error: flagError } = await supabase
+        .from('water_flags')
+        .select('id, water_report_id, reason, created_at')
+        .in('water_report_id', reportIds)
+        .order('created_at', { ascending: false })
+
+      if (flagError) throw flagError
+      flags = flagData ?? []
+    }
+
+    const flagsByReport = new Map<string, typeof flags>()
+    for (const flag of flags) {
+      const current = flagsByReport.get(flag.water_report_id) ?? []
+      current.push(flag)
+      flagsByReport.set(flag.water_report_id, current)
+    }
+
+    const data = (reports ?? []).map((report) => ({
+      ...report,
+      flags: flagsByReport.get(report.id) ?? [],
+    }))
+
     return NextResponse.json({ data })
   } catch (error) {
+    console.error('GET /api/water failed:', error)
     return NextResponse.json({ error: error instanceof Error ? error.message : 'โหลดข้อมูลไม่สำเร็จ' }, { status: 500 })
   }
 }

@@ -1,6 +1,13 @@
 export type WaterLevel = 'normal' | 'ankle' | 'knee' | 'waist' | 'chest' | 'unknown'
 export type WaterTrend = 'rising' | 'stable' | 'falling'
 
+export interface WaterFlag {
+  id: string
+  water_report_id: string
+  reason: string
+  created_at: string
+}
+
 export interface WaterReport {
   id: string
   lat: number
@@ -17,6 +24,7 @@ export interface WaterReport {
   is_active: boolean
   confirm_count: number
   false_report_count: number
+  flags?: WaterFlag[]
 }
 
 export interface CctvCamera {

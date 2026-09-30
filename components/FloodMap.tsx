@@ -43,11 +43,34 @@ export default function FloodMap() {
   }
 
   async function flagReport(id: string) {
-    const reason = window.prompt('เหตุผลที่คิดว่ารายงานนี้ไม่ถูกต้อง')
+    const reason = window.prompt('เหตุผลที่คิดว่ารายงานนี้ไม่ถูกต้อง')?.trim()
     if (!reason) return
-    const response = await fetch('/api/water/flag', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ water_report_id: id, reason }) })
-    if (response.ok) window.alert('รับข้อมูลแจ้งเตือนแล้ว ขอบคุณครับ')
-    else window.alert('ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่')
+    if (reason.length < 3) {
+      window.alert('กรุณาระบุเหตุผลอย่างน้อย 3 ตัวอักษร')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/water/flag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ water_report_id: id, reason }),
+      })
+      const json = await response.json()
+      if (!response.ok) throw new Error(json.error || 'ส่งข้อมูลไม่สำเร็จ')
+
+      setReports((current) => current.map((report) => {
+        if (report.id !== id) return report
+        return {
+          ...report,
+          false_report_count: json.data?.false_report_count ?? report.false_report_count + 1,
+          flags: [json.data, ...(report.flags ?? [])],
+        }
+      }))
+      window.alert('แจ้งข้อมูลผิดแล้ว เหตุผลจะแสดงให้ผู้ใช้คนอื่นเห็นที่จุดนี้')
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'ส่งข้อมูลไม่สำเร็จ กรุณาลองใหม่')
+    }
   }
 
   return <MapContainer center={[15.81047, 102.028812]} zoom={12} scrollWheelZoom className="h-full w-full">
@@ -60,6 +83,22 @@ export default function FloodMap() {
         <div className="text-sm">รถผ่าน: {r.passable === null ? 'ไม่ระบุ' : r.passable ? 'ได้' : 'ไม่ได้'}</div>
         {r.depth_cm != null && <div className="text-sm">ความลึก: {r.depth_cm} ซม.</div>}
         {r.note && <p className="mt-1 text-sm">{r.note}</p>}
+        {r.flags && r.flags.length > 0 && (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <strong className="text-sm text-red-800">⚠️ มีการแจ้งข้อมูลผิด {r.flags.length} ครั้ง</strong>
+              <span className="text-xs text-red-600">ตรวจสอบเหตุผลด้านล่าง</span>
+            </div>
+            <div className="mt-2 space-y-2">
+              {r.flags.map((flag) => (
+                <div key={flag.id} className="rounded-lg bg-white/80 p-2 text-sm text-red-900">
+                  <p>{flag.reason}</p>
+                  <time className="mt-1 block text-[11px] text-red-500">แจ้งเมื่อ {formatDate(flag.created_at)}</time>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="mt-3 flex gap-2">
           <button disabled={confirming === r.id || confirmed[r.id]} onClick={() => confirmReport(r.id)} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-60">{confirmed[r.id] ? '✓ ยืนยันแล้ว' : `ยืนยันว่าพบ (${r.confirm_count})`}</button>
           <button onClick={() => flagReport(r.id)} className="rounded-lg border border-red-200 px-3 py-2 text-xs font-bold text-red-600">แจ้งข้อมูลผิด</button>
@@ -77,3 +116,4 @@ function waterIcon(level: WaterReport['depth_level']) {
 
 function label(v: WaterReport['depth_level']) { return ({ normal: 'ปกติ', ankle: 'ตาตุ่ม', knee: 'เข่า', waist: 'เอว', chest: 'อกขึ้นไป', unknown: 'ไม่ระบุ' })[v] }
 function trend(v: WaterReport['trend']) { return ({ rising: 'เพิ่มขึ้น', stable: 'คงที่', falling: 'ลดลง' })[v] }
+function formatDate(value: string) { return new Date(value).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' }) }
