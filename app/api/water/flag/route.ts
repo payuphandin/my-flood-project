@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient, getSupabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   try {
@@ -7,6 +7,7 @@ export async function POST(request: Request) {
     if (!water_report_id || !reason) return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 })
 
     const supabase = getSupabaseClient()
+    const admin = getSupabaseAdmin()
     const { data, error } = await supabase
       .from('water_flags')
       .insert({ water_report_id, reason })
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
       .single()
 
     if (report) {
-      await supabase
+      await admin
         .from('water_reports')
         .update({ false_report_count: (report.false_report_count ?? 0) + 1, updated_at: new Date().toISOString() })
         .eq('id', water_report_id)

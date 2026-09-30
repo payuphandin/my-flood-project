@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   try {
     const { id, status, note } = await request.json()
     if (!id || !status) return NextResponse.json({ error: 'ข้อมูลไม่ครบ' }, { status: 400 })
 
-    const supabase = getSupabaseClient()
+    const supabase = getSupabaseAdmin()
     const { data, error } = await supabase
       .from('water_status_updates')
       .insert({ water_report_id: id, status, note: note || null })
