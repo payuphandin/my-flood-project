@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'ศูนย์ช่วยเหลือน้ำท่วม จังหวัดฉะเชิงเทรา',
+  title: 'ศูนย์ช่วยเหลือน้ำท่วม จังหวัดชัยภูมิ',
   description: 'ระบบรายงานและติดตามสถานการณ์น้ำท่วม',
 }
 
