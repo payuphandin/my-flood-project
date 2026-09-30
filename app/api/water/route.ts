@@ -24,6 +24,7 @@ export async function GET() {
         .select('id, water_report_id, reason, created_at')
         .in('water_report_id', reportIds)
         .order('created_at', { ascending: false })
+        .limit(Math.max(300, reportIds.length * 3))
 
       if (flagError) throw flagError
       flags = flagData ?? []
@@ -36,9 +37,30 @@ export async function GET() {
       flagsByReport.set(flag.water_report_id, current)
     }
 
+    const { data: updateData, error: updateError } = reportIds.length > 0
+      ? await supabase
+        .from('water_updates')
+        .select('id, water_report_id, type, note, photo_url, created_at')
+        .in('water_report_id', reportIds)
+        .order('created_at', { ascending: false })
+        .limit(Math.max(300, reportIds.length * 3))
+      : { data: [], error: null }
+
+    if (updateError) throw updateError
+
+    const updatesByReport = new Map<string, typeof updateData>()
+    for (const update of updateData ?? []) {
+      const current = updatesByReport.get(update.water_report_id) ?? []
+      current.push(update)
+      updatesByReport.set(update.water_report_id, current)
+    }
+
     const data = (reports ?? []).map((report) => ({
       ...report,
-      flags: flagsByReport.get(report.id) ?? [],
+      // โหลดเฉพาะรายการล่าสุดจำนวนเล็กน้อยสำหรับ Popup
+      // รายการทั้งหมดโหลดผ่าน API แบบแบ่งหน้า
+      flags: (flagsByReport.get(report.id) ?? []).slice(0, 3),
+      updates: (updatesByReport.get(report.id) ?? []).slice(0, 3),
     }))
 
     return NextResponse.json({ data })

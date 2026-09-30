@@ -8,6 +8,17 @@ export interface WaterFlag {
   created_at: string
 }
 
+export type WaterUpdateType = 'obstacle' | 'blocked' | 'rising' | 'falling' | 'road_damage' | 'power_issue' | 'affected_area' | 'photo' | 'other'
+
+export interface WaterUpdate {
+  id: string
+  water_report_id: string
+  type: WaterUpdateType
+  note: string
+  photo_url: string | null
+  created_at: string
+}
+
 export interface WaterReport {
   id: string
   lat: number
@@ -25,6 +36,7 @@ export interface WaterReport {
   confirm_count: number
   false_report_count: number
   flags?: WaterFlag[]
+  updates?: WaterUpdate[]
 }
 
 export interface CctvCamera {

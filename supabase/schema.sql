@@ -33,6 +33,15 @@ create table if not exists public.water_status_updates (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.water_updates (
+  id uuid primary key default gen_random_uuid(),
+  water_report_id uuid not null references public.water_reports(id) on delete cascade,
+  type text not null check (type in ('obstacle','blocked','rising','falling','road_damage','power_issue','affected_area','photo','other')),
+  note text not null,
+  photo_url text,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.cctv_cameras (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -48,10 +57,12 @@ create table if not exists public.cctv_cameras (
 create index if not exists water_reports_created_at_idx on public.water_reports(created_at desc);
 create index if not exists water_reports_active_idx on public.water_reports(is_active);
 create index if not exists water_flags_report_idx on public.water_flags(water_report_id);
+create index if not exists water_updates_report_created_idx on public.water_updates(water_report_id, created_at desc);
 
 alter table public.water_reports enable row level security;
 alter table public.water_flags enable row level security;
 alter table public.water_status_updates enable row level security;
+alter table public.water_updates enable row level security;
 alter table public.cctv_cameras enable row level security;
 
 create policy "public can read active water reports"
@@ -75,6 +86,15 @@ using (is_active = true);
 create policy "public can read status updates"
 on public.water_status_updates for select
 using (true);
+
+create policy "public can read water updates"
+on public.water_updates for select
+using (true);
+
+create policy "public can submit water updates"
+on public.water_updates for insert
+to anon, authenticated
+with check (true);
 
 insert into public.cctv_cameras (name, location_name, snapshot_url)
 select 'ตัวอย่างกล้อง 01', 'ตัวเมืองชัยภูมิ', null
